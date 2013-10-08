@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+  <title>scratch.js</title>
+  <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+  <link rel="stylesheet" media="all" href="public/stylesheets/normalize.css" />
+  <link rel="stylesheet" media="all" href="docco.css" />
+</head>
+<body>
+  <a href="https://github.com/dtao/scratch.js"><img style="position: absolute; top: 0; left: 0; border: 0;" src="public/images/ribbon.png" alt="Fork me on GitHub"></a>
+
+  <div class="container">
+    <div class="page">
+
+      <div class="header">
+        
+          
+          <h1>scratch.js</h1>
+
+          
+        
+
+        
+      </div>
+
+      
+        
+        <h2>a handful of utility functions built from &quot;scratch&quot;</h2>
+
+        
+      
+        
+        <p>This is just an educational little library to show how features build on top
+of one another. Most of us know this already, of course; but it can be easy
+to forget, or not to realize just how far this principle extends.</p>
+<p>For example, <a href="http://ariya.ofilabs.com/2013/10/searching-using-array-prototype-reduce.html">this post</a>
+discusses how it&#39;s possible to implement a search using <code>Array.prototype.reduce</code>.
+And <a href="http://www.elijahmanor.com/2013/08/reducing-filter-and-map-down-to-reduce.html#comment-1004076112">this article</a>
+from a while back describes how to implement <code>map</code> and <code>filter</code> in terms of
+<code>reduce</code>.</p>
+<p>Below we imagine what it would be like if JavaScript did not have the
+keywords <code>while</code> or <code>for</code> and we wanted to implement a relatively high-level
+function like <code>map</code>. How would we do it?</p>
+<p>READ ON TO FIND OUT.</p>
+
+        
+          <div class='highlight'><pre><span class="keyword">var</span> scratch = {</pre></div>
+        
+      
+        
+        <p>If ECMAScript had the <code>goto</code> statement, we could use that to implement the
+<code>while</code> keyword:</p>
+<pre><code>&#39;while&#39;: function(condition, fn) {
+  start:
+  if (!condition()) {
+    return;
+  }
+
+  fn();
+  goto start;
+}</code></pre>
+<p><a href="http://stackoverflow.com/questions/9751207/how-can-i-use-goto-in-javascript">TRAGICALLY</a>,
+that is not the case. So, we&#39;ll implement it with recursion instead!</p>
+
+        
+          <div class='highlight'><pre>  <span class="string">'while'</span>: <span class="keyword">function</span>(condition, fn) {
+    <span class="comment">/*
+     * A friendly reminder, since it's easy to forget we need a function here --
+     * i.e., if you called `while(flag, doSomething)`, the *current* value of
+     * `flag` would be passed in, where the value of the local `condition` would
+     * never change.
+     */</span>
+    <span class="keyword">if</span> (<span class="keyword">typeof</span> condition !== <span class="string">'function'</span>) {
+      <span class="keyword">throw</span> <span class="string">'Remember, you need to pass a FUNCTION to scratch.while!'</span>;
+    }
+
+    (<span class="function"><span class="keyword">function</span> <span class="title">loop</span><span class="params">()</span> {</span>
+      <span class="keyword">if</span> (!condition()) { <span class="keyword">return</span>; }
+      fn();
+      loop();
+    }());
+  },</pre></div>
+        
+      
+        
+        <p>Now that we have a while loop, we can easily implement the <code>for</code> keyword.</p>
+
+        
+          <div class='highlight'><pre>  <span class="string">'for'</span>: <span class="keyword">function</span>(init, condition, update, fn) {
+    init();
+    scratch.<span class="keyword">while</span>(condition, <span class="keyword">function</span>() {
+      fn();
+      update();
+    });
+  },</pre></div>
+        
+      
+        
+        <p>And with <code>for</code>, of course, it&#39;s quite easy to implement a <code>forEach</code> method.</p>
+
+        
+          <div class='highlight'><pre>  <span class="string">'forEach'</span>: <span class="keyword">function</span>(array, fn) {
+    <span class="keyword">var</span> i;
+    scratch.<span class="keyword">for</span>(
+      <span class="comment">/* for::init */</span>
+      <span class="keyword">function</span>() { i = <span class="number">0</span>; },
+
+      <span class="comment">/* for::condition */</span>
+      <span class="keyword">function</span>() { <span class="keyword">return</span> i &lt; array.length; },
+
+      <span class="comment">/* for::update */</span>
+      <span class="keyword">function</span>() { ++i; },
+
+      <span class="comment">/* for::fn */</span>
+      <span class="keyword">function</span>() { fn(array[i]); }
+    );
+  },</pre></div>
+        
+      
+        
+        <p>What is <code>reduce</code> but a glorified <code>forEach</code>, really?</p>
+
+        
+          <div class='highlight'><pre>  <span class="string">'reduce'</span>: <span class="keyword">function</span>(array, aggregator, memo) {
+    scratch.forEach(array, <span class="keyword">function</span>(element) {
+      memo = aggregator(memo, element);
+    });
+    <span class="keyword">return</span> memo;
+  },</pre></div>
+        
+      
+        
+        <p>Typically we think of <code>reduce</code> as operating on <em>values</em> (like numbers) and
+aggregating a result. Well, there&#39;s no law that says these values have to
+be numeric. We can treat an array as a &quot;value&quot; and define an &quot;aggregator&quot;
+that just pushes elements onto the array. So at the end of the day <code>map</code> is
+just a special case of <code>reduce</code>.</p>
+
+        
+          <div class='highlight'><pre>  <span class="string">'map'</span>: <span class="keyword">function</span>(array, selector) {
+    <span class="keyword">return</span> scratch.reduce(
+      <span class="comment">/* reduce::array (duh) */</span>
+      array,
+
+      <span class="comment">/* reduce::aggregator */</span>
+      <span class="keyword">function</span>(result, element) {
+        result.push(selector(element));
+        <span class="keyword">return</span> result;
+      },
+
+      <span class="comment">/* reduce::memo */</span>
+      []
+    );
+  },</pre></div>
+        
+      
+        
+        <p>We can implement <code>filter</code> using <code>reduce</code> just as easily as we implemented
+<code>map</code>. This time around our &quot;aggregator&quot; is a function that pushes elements
+onto the array <em>if</em> they satisfy our predicate.</p>
+
+        
+          <div class='highlight'><pre>  <span class="string">'filter'</span>: <span class="keyword">function</span>(array, predicate) {
+    <span class="keyword">return</span> scratch.reduce(
+      <span class="comment">/* reduce::array */</span>
+      array,
+
+      <span class="comment">/* reduce::aggregator */</span>
+      <span class="keyword">function</span>(result, element) {
+        <span class="keyword">if</span> (predicate(element)) {
+          result.push(element);
+        }
+        <span class="keyword">return</span> result;
+      },
+
+      <span class="comment">/* reduce::memo */</span>
+      []
+    );
+  },</pre></div>
+        
+      
+        
+        <h2>We could keep going here</h2>
+
+        
+      
+        
+        <p>The <code>pluck</code> method is itself a special case of the <code>map</code> method, where the
+&quot;selector&quot; is a function that returns the property identified by the given
+string.</p>
+
+        
+          <div class='highlight'><pre>  <span class="string">'pluck'</span>: <span class="keyword">function</span>(array, property) {
+    <span class="keyword">return</span> scratch.map(array, <span class="keyword">function</span>(element) { <span class="keyword">return</span> element[property]; });
+  },</pre></div>
+        
+      
+        
+        <p>The <code>compact</code> method is a special case of the <code>filter</code> method, where the
+&quot;predicate&quot; just checks if the value is null or undefined.</p>
+
+        
+          <div class='highlight'><pre>  <span class="string">'compact'</span>: <span class="keyword">function</span>(array) {
+    <span class="keyword">return</span> scratch.filter(array, <span class="keyword">function</span>(element) { <span class="keyword">return</span> element != <span class="literal">null</span>; });
+  }</pre></div>
+        
+      
+        
+        <p>...and so on and so forth.</p>
+
+        
+          <div class='highlight'><pre>};</pre></div>
+        
+      
+        
+        <p><em>fin</em></p>
+
+        
+      
+      <div class="fleur">h</div>
+    </div>
+  </div>
+</body>
+</html>
